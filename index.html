@@ -45,7 +45,7 @@
     .num{text-align:left}
     .pill{border:1px dashed #334155;border-radius:999px;padding:6px 10px;color:var(--muted);font-size:12px}
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .totals{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:10px}
     .total-card{background:linear-gradient(180deg,#0b1220,#0b1220);border:1px solid #1f2937;border-radius:16px;padding:12px}
     .total-card h3{margin:0 0 8px 0;font-size:14px;color:var(--muted)}
     .total-card .v{font-size:18px;font-weight:700}
@@ -70,7 +70,7 @@
 
     <section class="card" aria-label="بيانات المشروع">
       <div class="row" style="gap:12px">
-        <div class="col" style="grid-column:span 5">
+        <div class="col" style="grid-column:span 6">
           <label for="projectName">اسم المشروع</label>
           <input id="projectName" placeholder="مثال: مشروع تأهيل القبو" />
         </div>
@@ -78,11 +78,7 @@
           <label for="budget">الميزانية (ر.س)</label>
           <input id="budget" type="number" min="0" step="0.01" placeholder="0.00" />
         </div>
-        <div class="col" style="grid-column:span 2">
-          <label for="vat">الضريبة %</label>
-          <input id="vat" type="number" min="0" step="0.01" value="15" />
-        </div>
-        <div class="col" style="grid-column:span 2">
+        <div class="col" style="grid-column:span 3">
           <label for="currency">العملة</label>
           <select id="currency">
             <option value="SAR">SAR</option>
@@ -123,8 +119,6 @@
             <th style="width:140px">نوع المصروف</th>
             <th style="width:90px">الكمية</th>
             <th style="width:130px">سعر الوحدة</th>
-            <th style="width:110px">خصم %</th>
-            <th style="width:110px">الضريبة %</th>
             <th style="width:140px" class="num">إجمالي السطر</th>
             <th style="width:70px"></th>
           </tr>
@@ -133,10 +127,7 @@
       </table>
 
       <div class="totals" style="margin-top:12px">
-        <div class="total-card"><h3>الإجمالي قبل الخصم</h3><div id="subtotal" class="v">0.00</div></div>
-        <div class="total-card"><h3>إجمالي الخصومات</h3><div id="totalDiscount" class="v">0.00</div></div>
-        <div class="total-card"><h3>إجمالي الضريبة</h3><div id="totalVat" class="v">0.00</div></div>
-        <div class="total-card"><h3>الإجمالي النهائي</h3><div id="grandTotal" class="v">0.00</div></div>
+        <div class="total-card"><h3>الإجمالي</h3><div id="grandTotal" class="v">0.00</div></div>
       </div>
 
       <div class="footer">
@@ -167,12 +158,8 @@
     const els = {
       projectName: document.getElementById('projectName'),
       budget: document.getElementById('budget'),
-      vat: document.getElementById('vat'),
       currency: document.getElementById('currency'),
       itemsBody: document.getElementById('itemsBody'),
-      subtotal: document.getElementById('subtotal'),
-      totalDiscount: document.getElementById('totalDiscount'),
-      totalVat: document.getElementById('totalVat'),
       grandTotal: document.getElementById('grandTotal'),
       budgetStatus: document.getElementById('budgetStatus'),
       addRowBtn: document.getElementById('addRowBtn'),
@@ -202,8 +189,6 @@
         <td><input placeholder="مثال: مواد" list="typeList" value="${data.etype||''}"></td>
         <td><input type="number" min="0" step="0.01" value="${data.qty??1}"></td>
         <td><input type="number" min="0" step="0.01" value="${data.unit??0}"></td>
-        <td><input type="number" min="0" step="0.01" value="${data.disc??0}"></td>
-        <td><input type="number" min="0" step="0.01" value="${data.vat??''}" placeholder="افتراضي"></td>
         <td class="num lineTotal">0.00</td>
         <td class="num"><button class="danger del">حذف</button></td>
       `;
@@ -216,16 +201,14 @@
     function rows(){
       return [...els.itemsBody.querySelectorAll('tr')].map(tr=>{
         const tds = tr.querySelectorAll('td');
-        const [desc,phase,etype,qty,unit,disc,vat] = [
+        const [desc,phase,etype,qty,unit] = [
           tds[1].querySelector('input').value.trim(),
           tds[2].querySelector('input').value.trim(),
           tds[3].querySelector('input').value.trim(),
           parseFloat(tds[4].querySelector('input').value)||0,
           parseFloat(tds[5].querySelector('input').value)||0,
-          parseFloat(tds[6].querySelector('input').value)||0,
-          tds[7].querySelector('input').value === '' ? null : (parseFloat(tds[7].querySelector('input').value)||0),
         ];
-        return {desc,phase,etype,qty,unit,disc,vat};
+        return {desc,phase,etype,qty,unit};
       });
     }
 
@@ -234,28 +217,16 @@
       [...els.itemsBody.querySelectorAll('tr')].forEach((tr,i)=> tr.querySelector('.idx').textContent = i+1);
 
       const data = rows();
-      const defaultVAT = parseFloat(els.vat.value)||0;
-      let subtotal=0, totalDiscount=0, totalVat=0, grand=0;
+      let grand=0;
 
       data.forEach((r, i)=>{
-        const base = r.qty * r.unit;
-        const discAmt = base * (r.disc/100);
-        const afterDisc = base - discAmt;
-        const vatRate = (r.vat==null? defaultVAT : r.vat);
-        const vatAmt = afterDisc * (vatRate/100);
-        const lineTotal = afterDisc + vatAmt;
-        subtotal += base;
-        totalDiscount += discAmt;
-        totalVat += vatAmt;
+        const lineTotal = r.qty * r.unit;
         grand += lineTotal;
         // reflect in table
         const tr = els.itemsBody.querySelectorAll('tr')[i];
         tr.querySelector('.lineTotal').textContent = fmt(lineTotal);
       });
 
-      els.subtotal.textContent = fmt(subtotal);
-      els.totalDiscount.textContent = fmt(totalDiscount);
-      els.totalVat.textContent = fmt(totalVat);
       els.grandTotal.textContent = fmt(grand);
 
       // budget status
@@ -280,7 +251,6 @@
         meta:{
           projectName: els.projectName.value,
           budget: els.budget.value,
-          vat: els.vat.value,
           currency: els.currency.value,
           t: Date.now(),
         },
@@ -296,7 +266,6 @@
         const data = JSON.parse(raw);
         els.projectName.value = data.meta?.projectName||'';
         els.budget.value = data.meta?.budget||'';
-        els.vat.value = data.meta?.vat||'15';
         els.currency.value = data.meta?.currency||'SAR';
         els.itemsBody.innerHTML='';
         (data.items||[]).forEach(it=> newRow(it));
@@ -306,8 +275,8 @@
 
     // --- CSV helpers (for export/import and tests) ---
     function buildCSV(items){
-      const header = ['الوصف','المرحلة','نوع_المصروف','الكمية','سعر_الوحدة','خصم_٪','ضريبة_٪'];
-      const rowsCsv = (items||rows()).map(r=> [r.desc,r.phase,r.etype,r.qty,r.unit,r.disc,(r.vat==null?'' : r.vat)]);
+      const header = ['الوصف','المرحلة','نوع_المصروف','الكمية','سعر_الوحدة'];
+      const rowsCsv = (items||rows()).map(r=> [r.desc,r.phase,r.etype,r.qty,r.unit]);
       const lines = [header, ...rowsCsv].map(r=> r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(','));
       return lines.join('\n'); // استخدام \n الصريح لتفادي أخطاء الأسطر
     }
@@ -335,11 +304,7 @@
         const bodyLines = hasHeader ? lines.slice(1) : lines;
         const data = bodyLines.map(line=>{
           const cols = parseCsvLine(line);
-          // دعم قديم: إن وُجد عمود "التصنيف" القديم
-          if(cols.length===6){ // قديم: desc,cat,qty,unit,disc,vat
-            return {desc:cols[0]||'',phase:'غير محدد',etype:cols[1]||'',qty:parseFloat(cols[2])||0,unit:parseFloat(cols[3])||0,disc:parseFloat(cols[4])||0,vat:cols[5]===''?null:(parseFloat(cols[5])||0)};
-          }
-          return {desc:cols[0]||'',phase:cols[1]||'',etype:cols[2]||'',qty:parseFloat(cols[3])||0,unit:parseFloat(cols[4])||0,disc:parseFloat(cols[5])||0,vat:cols[6]===''?null:(parseFloat(cols[6])||0)};
+          return {desc:cols[0]||'',phase:cols[1]||'',etype:cols[2]||'',qty:parseFloat(cols[3])||0,unit:parseFloat(cols[4])||0};
         });
         els.itemsBody.innerHTML='';
         data.forEach(it=> newRow(it));
@@ -365,10 +330,7 @@
       return [
         `مشروع: ${els.projectName.value||'-'}`,
         `العملة: ${els.currency.value}`,
-        `الإجمالي قبل الخصم: ${fmt(num(els.subtotal.textContent))}`,
-        `إجمالي الخصومات: ${fmt(num(els.totalDiscount.textContent))}`,
-        `إجمالي الضريبة: ${fmt(num(els.totalVat.textContent))}`,
-        `الإجمالي النهائي: ${fmt(num(els.grandTotal.textContent))}`,
+        `الإجمالي: ${fmt(num(els.grandTotal.textContent))}`,
       ].join('\n');
     }
 
@@ -381,31 +343,21 @@
 
     function categoryReport(){
       const map = new Map();
-      const defaultVAT = parseFloat(els.vat.value)||0;
       const gb = els.groupBy.value;
       rows().forEach(r=>{
-        const base = r.qty*r.unit;
-        const discAmt = base*(r.disc/100);
-        const after = base-discAmt;
-        const vatAmt = after * ((r.vat==null?defaultVAT:r.vat)/100);
-        const total = after + vatAmt;
+        const total = r.qty*r.unit;
         let key = '';
         if(gb==='phase') key = r.phase || 'غير محدد';
         else if(gb==='type') key = r.etype || 'غير محدد';
         else key = `${r.phase||'غير محدد'} — ${r.etype||'غير محدد'}`;
-        const cur = map.get(key)||{base:0,disc:0,vat:0,total:0,count:0};
-        cur.base+=base; cur.disc+=discAmt; cur.vat+=vatAmt; cur.total+=total; cur.count++;
+        const cur = map.get(key)||{total:0,count:0};
+        cur.total+=total; cur.count++;
         map.set(key,cur);
       });
       const entries = [...map.entries()].sort((a,b)=> b[1].total - a[1].total);
       els.categoryReport.innerHTML = entries.length? entries.map(([k,v])=>
-        `<div class="total-card" style="margin:6px 0">`+
-        `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-            <div><strong>${k}</strong> <span class="muted">(${v.count} بند)</span></div>
-            <div class="v">${fmt(v.total)} ${els.currency.value}</div>
-         </div>
-         <div class="muted" style="margin-top:6px">قبل الخصم: ${fmt(v.base)} | الخصم: ${fmt(v.disc)} | الضريبة: ${fmt(v.vat)}</div>
-        </div>`).join('') : '<div class="muted">لا توجد بيانات لعرضها</div>';
+        `<div class="total-card" style="margin:6px 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><strong>${k}</strong> <span class="muted">(${v.count} بند)</span></div><div class="v">${fmt(v.total)} ${els.currency.value}</div></div></div>`
+      ).join('') : '<div class="muted">لا توجد بيانات لعرضها</div>';
       els.reportSection.style.display='block';
     }
 
@@ -443,7 +395,6 @@
       if(!confirm('سيتم تفريغ البيانات الحالية. متابعة؟')) return;
       els.projectName.value='';
       els.budget.value='';
-      els.vat.value='15';
       els.currency.value='SAR';
       els.itemsBody.innerHTML='';
       recalc();
@@ -453,9 +404,9 @@
     function seed(){
       if(els.itemsBody.children.length) return;
       [
-        {desc:'عزل إيبوكسي للخزان',phase:'القبو',etype:'مواد',qty:1,unit:4500,disc:5},
-        {desc:'صب سقف الدور الأول',phase:'سقف الدور الأول',etype:'مقاول',qty:1,unit:18000,disc:0},
-        {desc:'مضخة خرسانة',phase:'الحوش',etype:'معدات',qty:4,unit:350,disc:0,vat:10},
+        {desc:'عزل إيبوكسي للخزان',phase:'القبو',etype:'مواد',qty:1,unit:4500},
+        {desc:'صب سقف الدور الأول',phase:'سقف الدور الأول',etype:'مقاول',qty:1,unit:18000},
+        {desc:'مضخة خرسانة',phase:'الحوش',etype:'معدات',qty:4,unit:350},
       ].forEach(newRow);
       recalc();
     }
@@ -469,8 +420,8 @@
       const results = [];
       // 1) Line breaks in CSV export
       const sample = [
-        {desc:'مسمار "ستانلس", 10مم', phase:'الدور الأرضي', etype:'مواد', qty:2, unit:5.5, disc:0, vat:null},
-        {desc:'عمالة يومية', phase:'الحوش', etype:'يوميات', qty:1, unit:200, disc:10, vat:15},
+        {desc:'مسمار "ستانلس", 10مم', phase:'الدور الأرضي', etype:'مواد', qty:2, unit:5.5},
+        {desc:'عمالة يومية', phase:'الحوش', etype:'يوميات', qty:1, unit:200},
       ];
       const csv = buildCSV(sample);
       const lines = splitLines(csv);
@@ -491,20 +442,8 @@
       results.push(assert('الملخص يحتوي على فواصل أسطر صحيحة', sum.includes('\n')));
 
       // 5) Totals calculation sanity
-      const defVAT = 15; // default
-      const base0 = sample[0].qty*sample[0].unit; // 11
-      const disc0 = base0*(sample[0].disc/100); // 0
-      const after0 = base0-disc0; // 11
-      const vat0 = after0 * (defVAT/100); // 1.65
-      const total0 = after0 + vat0; // 12.65
-
-      const base1 = sample[1].qty*sample[1].unit; // 200
-      const disc1 = base1*(sample[1].disc/100); // 20
-      const after1 = base1-disc1; // 180
-      const vat1 = after1 * (sample[1].vat/100); // 27
-      const total1 = after1 + vat1; // 207
-
-      results.push(assert('حسابات ضريبة/خصم أساسية', Math.abs(total0-12.65)<1e-6 && Math.abs(total1-207)<1e-6));
+      const total = sample.reduce((s,r)=> s + r.qty*r.unit, 0); // 211
+      results.push(assert('حسابات إجمالي أساسية', Math.abs(total-211)<1e-6));
 
       const okCount = results.filter(r=>r.pass).length;
       const allOk = okCount===results.length;
@@ -529,7 +468,7 @@
     els.copySummaryBtn.addEventListener('click', copySummary);
     els.categoryReportBtn.addEventListener('click', categoryReport);
     els.closeReportBtn.addEventListener('click', ()=> els.reportSection.style.display='none');
-    ['projectName','budget','vat','currency'].forEach(id=> els[id].addEventListener('input', recalc));
+    ['projectName','budget','currency'].forEach(id=> els[id].addEventListener('input', recalc));
     els.saveSnapshotBtn.addEventListener('click', saveSnapshot);
     els.loadSnapshotBtn.addEventListener('click', loadSnapshot);
     els.clearBtn.addEventListener('click', clearAll);
