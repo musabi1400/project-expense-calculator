@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>حاسبة مصروفات مشروع</title>
+  <style>
+    :root{
+      --bg:#0f172a; /* slate-900 */
+      --card:#111827ee; /* gray-900 */
+      --muted:#94a3b8; /* slate-400 */
+      --text:#e5e7eb; /* gray-200 */
+      --accent:#22d3ee; /* cyan-400 */
+      --ring:#38bdf8; /* sky-400 */
+      --ok:#10b981; /* emerald-500 */
+      --warn:#f59e0b; /* amber-500 */
+      --danger:#ef4444; /* red-500 */
+    }
+    *{box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans Arabic",Tahoma,Arial,sans-serif;margin:0;background:linear-gradient(180deg,#0b1220,#0f172a);color:var(--text)}
+    .container{max-width:1100px;margin:auto;padding:24px}
+    header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
+    h1{font-size:clamp(20px,2.6vw,30px);margin:0}
+    .badge{padding:6px 10px;border:1px solid #243041;border-radius:999px;color:var(--muted)}
+    .card{background:linear-gradient(180deg,#121826,#0b1220);border:1px solid #1f2937;border-radius:18px;padding:16px;box-shadow:0 8px 30px #0005}
+    .row{display:grid;grid-template-columns:repeat(12,1fr);gap:8px}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    input,select,button,textarea{font:inherit}
+    input,select,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #1f2937;background:#0b1220;color:var(--text);outline:none}
+    input:focus,select:focus,textarea:focus{border-color:var(--ring);box-shadow:0 0 0 3px #38bdf833}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    button{padding:10px 14px;border-radius:12px;border:1px solid #1f2937;background:#0b1220;color:var(--text);cursor:pointer}
+    .primary{background:linear-gradient(180deg,#0ea5e9,#06b6د4);border:none;color:#002432}
+    .ghost{background:transparent}
+    .danger{background:linear-gradient(180deg,#ef4444,#b91c1c);border:none}
+    .ok{background:linear-gradient(180deg,#10b981,#059669);border:none}
+    .warn{background:linear-gradient(180deg,#f59e0b,#d97706);border:none}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    thead th{font-size:12px;font-weight:600;color:var(--muted);text-align:right;padding:6px 8px}
+    tbody td{background:#0b1220;border:1px solid #1f2937;border-right:none;border-left:none;padding:6px}
+    tbody tr{border-radius:12px}
+    tbody tr td:first-child{border-top-right-radius:12px;border-bottom-right-radius:12px}
+    tbody tr td:last-child{border-top-left-radius:12px;border-bottom-left-radius:12px}
+    tfoot td{padding:6px}
+    .num{text-align:left}
+    .pill{border:1px dashed #334155;border-radius:999px;padding:6px 10px;color:var(--muted);font-size:12px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .total-card{background:linear-gradient(180deg,#0b1220,#0b1220);border:1px solid #1f2937;border-radius:16px;padding:12px}
+    .total-card h3{margin:0 0 8px 0;font-size:14px;color:var(--muted)}
+    .total-card .v{font-size:18px;font-weight:700}
+    .muted{color:var(--muted)}
+    .thin{font-weight:500;color:var(--muted)}
+    .footer{margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+    .budget-ok{color:var(--ok)}
+    .budget-warn{color:var(--warn)}
+    .budget-danger{color:var(--danger)}
+    .help{font-size:13px;color:var(--muted)}
+    .tests-pass{color:#10b981}
+    .tests-fail{color:#ef4444}
+    .tests-muted{color:#94a3b8}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>حاسبة مصروفات مشروع</h1>
+      <span class="badge">نسخة مطوّرة — دعم مرحلتين للتصنيف</span>
+    </header>
+
+    <section class="card" aria-label="بيانات المشروع">
+      <div class="row" style="gap:12px">
+        <div class="col" style="grid-column:span 5">
+          <label for="projectName">اسم المشروع</label>
+          <input id="projectName" placeholder="مثال: مشروع تأهيل القبو" />
+        </div>
+        <div class="col" style="grid-column:span 3">
+          <label for="budget">الميزانية (ر.س)</label>
+          <input id="budget" type="number" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="col" style="grid-column:span 2">
+          <label for="vat">الضريبة %</label>
+          <input id="vat" type="number" min="0" step="0.01" value="15" />
+        </div>
+        <div class="col" style="grid-column:span 2">
+          <label for="currency">العملة</label>
+          <select id="currency">
+            <option value="SAR">SAR</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </div>
+      </div>
+      <div class="footer">
+        <div class="help">أضف البنود—والآن يمكنك تصنيف كل بند حسب <strong>المرحلة</strong> وحسب <strong>نوع المصروف</strong>. القوائم قابلة للتحرير بكتابة أي قيمة جديدة.</div>
+        <div class="actions">
+          <button class="ghost" id="saveSnapshotBtn">حفظ نسخة</button>
+          <button class="ghost" id="loadSnapshotBtn">استرجاع نسخة</button>
+          <button class="ghost" id="clearBtn">تفريغ</button>
+        </div>
+      </div>
+    </section>
+
+    <section style="height:12px"></section>
+
+    <section class="card" aria-label="بنود المصروفات">
+      <div class="actions" style="justify-content:space-between;margin-bottom:8px">
+        <div class="help">استخدم زر "+" لإضافة صف جديد. حقولا <strong>المرحلة</strong> و<strong>نوع المصروف</strong> بها اقتراحات ويمكنك كتابة ما تريد.</div>
+        <div class="actions">
+          <button class="primary" id="addRowBtn">+ إضافة بند</button>
+          <button class="warn" id="exportCsvBtn">تصدير CSV</button>
+          <button class="ok" id="importCsvBtn">استيراد CSV</button>
+          <input type="file" id="csvFile" accept="text/csv" style="display:none" />
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:24px">#</th>
+            <th>الوصف</th>
+            <th style="width:150px">المرحلة</th>
+            <th style="width:140px">نوع المصروف</th>
+            <th style="width:90px">الكمية</th>
+            <th style="width:130px">سعر الوحدة</th>
+            <th style="width:110px">خصم %</th>
+            <th style="width:110px">الضريبة %</th>
+            <th style="width:140px" class="num">إجمالي السطر</th>
+            <th style="width:70px"></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+
+      <div class="totals" style="margin-top:12px">
+        <div class="total-card"><h3>الإجمالي قبل الخصم</h3><div id="subtotal" class="v">0.00</div></div>
+        <div class="total-card"><h3>إجمالي الخصومات</h3><div id="totalDiscount" class="v">0.00</div></div>
+        <div class="total-card"><h3>إجمالي الضريبة</h3><div id="totalVat" class="v">0.00</div></div>
+        <div class="total-card"><h3>الإجمالي النهائي</h3><div id="grandTotal" class="v">0.00</div></div>
+      </div>
+
+      <div class="footer">
+        <div class="pill" id="budgetStatus">لا توجد ميزانية محددة بعد</div>
+        <div class="actions">
+          <select id="groupBy" title="طريقة التجميع">
+            <option value="phase">تجميع حسب المرحلة</option>
+            <option value="type">تجميع حسب نوع المصروف</option>
+            <option value="phase+type">تجميع حسب المرحلة + نوع المصروف</option>
+          </select>
+          <button class="ghost" id="categoryReportBtn">عرض التقرير</button>
+          <button class="ghost" id="copySummaryBtn">نسخ الملخص</button>
+          <button class="ghost" id="runTestsBtn" title="اختبارات تلقائية">تشغيل الاختبارات</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="reportSection" style="margin-top:12px;display:none" class="card" aria-label="تقرير التصنيفات">
+      <div class="actions" style="justify-content:space-between">
+        <h2 style="margin:0;font-size:18px">تقرير المصروفات</h2>
+        <button class="ghost" id="closeReportBtn">إغلاق</button>
+      </div>
+      <div id="categoryReport"></div>
+    </section>
+  </div>
+
+  <script>
+    const els = {
+      projectName: document.getElementById('projectName'),
+      budget: document.getElementById('budget'),
+      vat: document.getElementById('vat'),
+      currency: document.getElementById('currency'),
+      itemsBody: document.getElementById('itemsBody'),
+      subtotal: document.getElementById('subtotal'),
+      totalDiscount: document.getElementById('totalDiscount'),
+      totalVat: document.getElementById('totalVat'),
+      grandTotal: document.getElementById('grandTotal'),
+      budgetStatus: document.getElementById('budgetStatus'),
+      addRowBtn: document.getElementById('addRowBtn'),
+      exportCsvBtn: document.getElementById('exportCsvBtn'),
+      importCsvBtn: document.getElementById('importCsvBtn'),
+      csvFile: document.getElementById('csvFile'),
+      copySummaryBtn: document.getElementById('copySummaryBtn'),
+      categoryReportBtn: document.getElementById('categoryReportBtn'),
+      reportSection: document.getElementById('reportSection'),
+      categoryReport: document.getElementById('categoryReport'),
+      closeReportBtn: document.getElementById('closeReportBtn'),
+      saveSnapshotBtn: document.getElementById('saveSnapshotBtn'),
+      loadSnapshotBtn: document.getElementById('loadSnapshotBtn'),
+      clearBtn: document.getElementById('clearBtn'),
+      groupBy: document.getElementById('groupBy'),
+      runTestsBtn: document.getElementById('runTestsBtn'),
+    };
+
+    const fmt = (n)=> (isNaN(n)?0:n).toLocaleString('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    function newRow(data={}){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="thin idx"></td>
+        <td><input placeholder="مثال: خرسانة إيبوكسي للخزان" value="${data.desc||''}"></td>
+        <td><input placeholder="مثال: سقف الدور الأول" list="phaseList" value="${data.phase||''}"></td>
+        <td><input placeholder="مثال: مواد" list="typeList" value="${data.etype||''}"></td>
+        <td><input type="number" min="0" step="0.01" value="${data.qty??1}"></td>
+        <td><input type="number" min="0" step="0.01" value="${data.unit??0}"></td>
+        <td><input type="number" min="0" step="0.01" value="${data.disc??0}"></td>
+        <td><input type="number" min="0" step="0.01" value="${data.vat??''}" placeholder="افتراضي"></td>
+        <td class="num lineTotal">0.00</td>
+        <td class="num"><button class="danger del">حذف</button></td>
+      `;
+      els.itemsBody.appendChild(tr);
+      tr.querySelectorAll('input').forEach(inp=> inp.addEventListener('input',()=> recalc()));
+      tr.querySelector('.del').addEventListener('click',()=>{tr.remove(); recalc()});
+      recalc();
+    }
+
+    function rows(){
+      return [...els.itemsBody.querySelectorAll('tr')].map(tr=>{
+        const tds = tr.querySelectorAll('td');
+        const [desc,phase,etype,qty,unit,disc,vat] = [
+          tds[1].querySelector('input').value.trim(),
+          tds[2].querySelector('input').value.trim(),
+          tds[3].querySelector('input').value.trim(),
+          parseFloat(tds[4].querySelector('input').value)||0,
+          parseFloat(tds[5].querySelector('input').value)||0,
+          parseFloat(tds[6].querySelector('input').value)||0,
+          tds[7].querySelector('input').value === '' ? null : (parseFloat(tds[7].querySelector('input').value)||0),
+        ];
+        return {desc,phase,etype,qty,unit,disc,vat};
+      });
+    }
+
+    function recalc(){
+      // re-index
+      [...els.itemsBody.querySelectorAll('tr')].forEach((tr,i)=> tr.querySelector('.idx').textContent = i+1);
+
+      const data = rows();
+      const defaultVAT = parseFloat(els.vat.value)||0;
+      let subtotal=0, totalDiscount=0, totalVat=0, grand=0;
+
+      data.forEach((r, i)=>{
+        const base = r.qty * r.unit;
+        const discAmt = base * (r.disc/100);
+        const afterDisc = base - discAmt;
+        const vatRate = (r.vat==null? defaultVAT : r.vat);
+        const vatAmt = afterDisc * (vatRate/100);
+        const lineTotal = afterDisc + vatAmt;
+        subtotal += base;
+        totalDiscount += discAmt;
+        totalVat += vatAmt;
+        grand += lineTotal;
+        // reflect in table
+        const tr = els.itemsBody.querySelectorAll('tr')[i];
+        tr.querySelector('.lineTotal').textContent = fmt(lineTotal);
+      });
+
+      els.subtotal.textContent = fmt(subtotal);
+      els.totalDiscount.textContent = fmt(totalDiscount);
+      els.totalVat.textContent = fmt(totalVat);
+      els.grandTotal.textContent = fmt(grand);
+
+      // budget status
+      const b = parseFloat(els.budget.value);
+      if(!isNaN(b) && b>0){
+        const left = b - grand;
+        let cls = 'budget-ok', txt = `المتبقي من الميزانية: ${fmt(left)} ${els.currency.value}`;
+        if(left < 0 && left >= -0.05*b) {cls='budget-warn'; txt = `تجاوز طفيف للميزانية: ${fmt(Math.abs(left))} ${els.currency.value}`}
+        else if(left < -0.05*b){cls='budget-danger'; txt = `تجاوز كبير للميزانية: ${fmt(Math.abs(left))} ${els.currency.value}`}
+        els.budgetStatus.className = `pill ${cls}`;
+        els.budgetStatus.textContent = txt;
+      } else {
+        els.budgetStatus.className = 'pill';
+        els.budgetStatus.textContent = 'لا توجد ميزانية محددة بعد';
+      }
+
+      persist();
+    }
+
+    function persist(){
+      const payload = {
+        meta:{
+          projectName: els.projectName.value,
+          budget: els.budget.value,
+          vat: els.vat.value,
+          currency: els.currency.value,
+          t: Date.now(),
+        },
+        items: rows(),
+      };
+      localStorage.setItem('project-expense-calculator', JSON.stringify(payload));
+    }
+
+    function restore(){
+      const raw = localStorage.getItem('project-expense-calculator');
+      if(!raw) { seed(); return; }
+      try{
+        const data = JSON.parse(raw);
+        els.projectName.value = data.meta?.projectName||'';
+        els.budget.value = data.meta?.budget||'';
+        els.vat.value = data.meta?.vat||'15';
+        els.currency.value = data.meta?.currency||'SAR';
+        els.itemsBody.innerHTML='';
+        (data.items||[]).forEach(it=> newRow(it));
+      }catch(e){console.error(e)}
+      recalc();
+    }
+
+    // --- CSV helpers (for export/import and tests) ---
+    function buildCSV(items){
+      const header = ['الوصف','المرحلة','نوع_المصروف','الكمية','سعر_الوحدة','خصم_٪','ضريبة_٪'];
+      const rowsCsv = (items||rows()).map(r=> [r.desc,r.phase,r.etype,r.qty,r.unit,r.disc,(r.vat==null?'' : r.vat)]);
+      const lines = [header, ...rowsCsv].map(r=> r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(','));
+      return lines.join('\n'); // استخدام \n الصريح لتفادي أخطاء الأسطر
+    }
+
+    function exportCSV(){
+      const csv = buildCSV();
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (els.projectName.value||'project')+"_items.csv";
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    function splitLines(text){
+      // يقبل كل من CRLF و LF
+      return String(text).replace(/\r\n/g,'\n').split('\n');
+    }
+
+    function importCSV(file){
+      const reader = new FileReader();
+      reader.onload = () => {
+        const lines = splitLines(reader.result).filter(Boolean);
+        if(lines.length<=1) return;
+        const hasHeader = lines[0].includes('المرحلة') || lines[0].includes('نوع_المصروف');
+        const bodyLines = hasHeader ? lines.slice(1) : lines;
+        const data = bodyLines.map(line=>{
+          const cols = parseCsvLine(line);
+          // دعم قديم: إن وُجد عمود "التصنيف" القديم
+          if(cols.length===6){ // قديم: desc,cat,qty,unit,disc,vat
+            return {desc:cols[0]||'',phase:'غير محدد',etype:cols[1]||'',qty:parseFloat(cols[2])||0,unit:parseFloat(cols[3])||0,disc:parseFloat(cols[4])||0,vat:cols[5]===''?null:(parseFloat(cols[5])||0)};
+          }
+          return {desc:cols[0]||'',phase:cols[1]||'',etype:cols[2]||'',qty:parseFloat(cols[3])||0,unit:parseFloat(cols[4])||0,disc:parseFloat(cols[5])||0,vat:cols[6]===''?null:(parseFloat(cols[6])||0)};
+        });
+        els.itemsBody.innerHTML='';
+        data.forEach(it=> newRow(it));
+        recalc();
+      };
+      reader.readAsText(file);
+    }
+
+    function parseCsvLine(line){
+      const out=[]; let cur=''; let inQ=false;
+      for(let i=0;i<line.length;i++){
+        const ch=line[i];
+        if(ch==='"'){
+          if(inQ && line[i+1]==='"'){cur+='"'; i++;}
+          else inQ=!inQ;
+        } else if(ch===',' && !inQ){out.push(cur); cur='';}
+        else {cur+=ch}
+      }
+      out.push(cur); return out;
+    }
+
+    function buildSummary(){
+      return [
+        `مشروع: ${els.projectName.value||'-'}`,
+        `العملة: ${els.currency.value}`,
+        `الإجمالي قبل الخصم: ${fmt(num(els.subtotal.textContent))}`,
+        `إجمالي الخصومات: ${fmt(num(els.totalDiscount.textContent))}`,
+        `إجمالي الضريبة: ${fmt(num(els.totalVat.textContent))}`,
+        `الإجمالي النهائي: ${fmt(num(els.grandTotal.textContent))}`,
+      ].join('\n');
+    }
+
+    function copySummary(){
+      const text = buildSummary();
+      navigator.clipboard.writeText(text).then(()=>{ toast('تم نسخ الملخص'); });
+    }
+
+    function num(s){return parseFloat(String(s).replace(/[^0-9.\-]/g,''))||0}
+
+    function categoryReport(){
+      const map = new Map();
+      const defaultVAT = parseFloat(els.vat.value)||0;
+      const gb = els.groupBy.value;
+      rows().forEach(r=>{
+        const base = r.qty*r.unit;
+        const discAmt = base*(r.disc/100);
+        const after = base-discAmt;
+        const vatAmt = after * ((r.vat==null?defaultVAT:r.vat)/100);
+        const total = after + vatAmt;
+        let key = '';
+        if(gb==='phase') key = r.phase || 'غير محدد';
+        else if(gb==='type') key = r.etype || 'غير محدد';
+        else key = `${r.phase||'غير محدد'} — ${r.etype||'غير محدد'}`;
+        const cur = map.get(key)||{base:0,disc:0,vat:0,total:0,count:0};
+        cur.base+=base; cur.disc+=discAmt; cur.vat+=vatAmt; cur.total+=total; cur.count++;
+        map.set(key,cur);
+      });
+      const entries = [...map.entries()].sort((a,b)=> b[1].total - a[1].total);
+      els.categoryReport.innerHTML = entries.length? entries.map(([k,v])=>
+        `<div class="total-card" style="margin:6px 0">`+
+        `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div><strong>${k}</strong> <span class="muted">(${v.count} بند)</span></div>
+            <div class="v">${fmt(v.total)} ${els.currency.value}</div>
+         </div>
+         <div class="muted" style="margin-top:6px">قبل الخصم: ${fmt(v.base)} | الخصم: ${fmt(v.disc)} | الضريبة: ${fmt(v.vat)}</div>
+        </div>`).join('') : '<div class="muted">لا توجد بيانات لعرضها</div>';
+      els.reportSection.style.display='block';
+    }
+
+    function toast(msg){
+      const t = document.createElement('div');
+      t.textContent = msg;
+      t.style.position='fixed'; t.style.bottom='20px'; t.style.left='50%'; t.style.transform='translateX(-50%)';
+      t.style.background='#111827'; t.style.border='1px solid #374151'; t.style.padding='10px 14px'; t.style.borderRadius='12px'; t.style.color='#e5e7eb'; t.style.boxShadow='0 10px 30px #0007';
+      document.body.appendChild(t);
+      setTimeout(()=> t.remove(), 1400);
+    }
+
+    function saveSnapshot(){
+      const name = prompt('اسم النسخة (مثال: قبل إسناد المقاول)');
+      if(!name) return;
+      const data = localStorage.getItem('project-expense-calculator');
+      const key = 'pec-snap-'+name;
+      localStorage.setItem(key, data);
+      toast('تم الحفظ كنسخة: '+name);
+    }
+
+    function loadSnapshot(){
+      const keys = Object.keys(localStorage).filter(k=> k.startsWith('pec-snap-'));
+      if(!keys.length){toast('لا توجد نسخ محفوظة'); return}
+      const name = prompt('اكتب اسم النسخة من القائمة التالية:\n'+keys.map(k=>k.replace('pec-snap-','')).join('\n'));
+      if(!name) return;
+      const data = localStorage.getItem('pec-snap-'+name);
+      if(!data){toast('لم يتم العثور على النسخة'); return}
+      localStorage.setItem('project-expense-calculator', data);
+      restore();
+      toast('تم الاسترجاع: '+name);
+    }
+
+    function clearAll(){
+      if(!confirm('سيتم تفريغ البيانات الحالية. متابعة؟')) return;
+      els.projectName.value='';
+      els.budget.value='';
+      els.vat.value='15';
+      els.currency.value='SAR';
+      els.itemsBody.innerHTML='';
+      recalc();
+    }
+
+    // عينات للانطلاق السريع
+    function seed(){
+      if(els.itemsBody.children.length) return;
+      [
+        {desc:'عزل إيبوكسي للخزان',phase:'القبو',etype:'مواد',qty:1,unit:4500,disc:5},
+        {desc:'صب سقف الدور الأول',phase:'سقف الدور الأول',etype:'مقاول',qty:1,unit:18000,disc:0},
+        {desc:'مضخة خرسانة',phase:'الحوش',etype:'معدات',qty:4,unit:350,disc:0,vat:10},
+      ].forEach(newRow);
+      recalc();
+    }
+
+    // --- اختبارات تلقائية (Test Cases) ---
+    function assert(name, cond){
+      return {name, pass: !!cond};
+    }
+
+    function runTests(){
+      const results = [];
+      // 1) Line breaks in CSV export
+      const sample = [
+        {desc:'مسمار "ستانلس", 10مم', phase:'الدور الأرضي', etype:'مواد', qty:2, unit:5.5, disc:0, vat:null},
+        {desc:'عمالة يومية', phase:'الحوش', etype:'يوميات', qty:1, unit:200, disc:10, vat:15},
+      ];
+      const csv = buildCSV(sample);
+      const lines = splitLines(csv);
+      results.push(assert('CSV يستخدم \n للفصل بين الأسطر', lines.length===3)); // header + 2
+      results.push(assert('السطر الأول رأس الأعمدة', lines[0].includes('الوصف')));
+      results.push(assert('الاقتباسات المزدوجة تُهَرَّب بشكل صحيح', /"مسمار ""ستانلس"", 10مم"/.test(lines[1])));
+
+      // 2) parseCsvLine with quoted comma
+      const parsed = parseCsvLine('"a,b","c"');
+      results.push(assert('parseCsvLine يتعامل مع الفواصل داخل الاقتباس', parsed[0]==='a,b' && parsed[1]==='c'));
+
+      // 3) splitLines handles CRLF
+      const crlf = 'a\r\nb\r\n';
+      results.push(assert('splitLines يدعم CRLF', splitLines(crlf).filter(Boolean).length===2));
+
+      // 4) Summary contains \n separators
+      const sum = buildSummary();
+      results.push(assert('الملخص يحتوي على فواصل أسطر صحيحة', sum.includes('\n')));
+
+      // 5) Totals calculation sanity
+      const defVAT = 15; // default
+      const base0 = sample[0].qty*sample[0].unit; // 11
+      const disc0 = base0*(sample[0].disc/100); // 0
+      const after0 = base0-disc0; // 11
+      const vat0 = after0 * (defVAT/100); // 1.65
+      const total0 = after0 + vat0; // 12.65
+
+      const base1 = sample[1].qty*sample[1].unit; // 200
+      const disc1 = base1*(sample[1].disc/100); // 20
+      const after1 = base1-disc1; // 180
+      const vat1 = after1 * (sample[1].vat/100); // 27
+      const total1 = after1 + vat1; // 207
+
+      results.push(assert('حسابات ضريبة/خصم أساسية', Math.abs(total0-12.65)<1e-6 && Math.abs(total1-207)<1e-6));
+
+      const okCount = results.filter(r=>r.pass).length;
+      const allOk = okCount===results.length;
+      const msg = allOk ? `✅ جميع الاختبارات ناجحة (${okCount}/${results.length})` : `⚠️ بعض الاختبارات فشلت (${okCount}/${results.length})`;
+
+      // عرض النتائج في نافذة بسيطة
+      const panel = document.createElement('div');
+      panel.style.position='fixed'; panel.style.inset='auto 20px 20px auto'; panel.style.maxWidth='420px';
+      panel.style.background='#0b1220'; panel.style.border='1px solid #374151'; panel.style.color='#e5e7eb';
+      panel.style.borderRadius='14px'; panel.style.padding='12px'; panel.style.boxShadow='0 10px 30px #0007';
+      panel.innerHTML = `<div style="font-weight:700; margin-bottom:8px;">${msg}</div>` +
+        results.map(r=> `<div class="${r.pass?'tests-pass':'tests-fail'}">${r.pass?'✓':'✗'} ${r.name}</div>`).join('');
+      document.body.appendChild(panel);
+      setTimeout(()=> panel.remove(), 5500);
+    }
+
+    // events
+    els.addRowBtn.addEventListener('click',()=> newRow());
+    els.exportCsvBtn.addEventListener('click', exportCSV);
+    els.importCsvBtn.addEventListener('click', ()=> els.csvFile.click());
+    els.csvFile.addEventListener('change', (e)=> e.target.files[0] && importCSV(e.target.files[0]));
+    els.copySummaryBtn.addEventListener('click', copySummary);
+    els.categoryReportBtn.addEventListener('click', categoryReport);
+    els.closeReportBtn.addEventListener('click', ()=> els.reportSection.style.display='none');
+    ['projectName','budget','vat','currency'].forEach(id=> els[id].addEventListener('input', recalc));
+    els.saveSnapshotBtn.addEventListener('click', saveSnapshot);
+    els.loadSnapshotBtn.addEventListener('click', loadSnapshot);
+    els.clearBtn.addEventListener('click', clearAll);
+    els.runTestsBtn.addEventListener('click', runTests);
+
+    // bootstrap
+    restore();
+    if((rows()||[]).length===0){ seed(); }
+    recalc();
+  </script>
+
+  <!-- اقتراحات للمراحل وأنواع المصروف -->
+  <datalist id="phaseList">
+    <option value="سقف الدور الأول"></option>
+    <option value="الحوش"></option>
+    <option value="أعمدة الملحق"></option>
+    <option value="القبو"></option>
+    <option value="الواجهة"></option>
+    <option value="الدور الأرضي"></option>
+  </datalist>
+  <datalist id="typeList">
+    <option value="مواد"></option>
+    <option value="معدات"></option>
+    <option value="يوميات"></option>
+    <option value="مقاول"></option>
+    <option value="استشاري"></option>
+    <option value="نقل"></option>
+  </datalist>
+</body>
+</html>
