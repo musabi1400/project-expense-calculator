@@ -283,7 +283,8 @@
 
     function exportCSV(){
       const csv = buildCSV();
-      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      // إضافة BOM لضمان دعم برامج الجدولة للترميز UTF-8
+      const blob = new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8;'});
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = (els.projectName.value||'project')+"_items.csv";
@@ -291,8 +292,8 @@
     }
 
     function splitLines(text){
-      // يقبل كل من CRLF و LF
-      return String(text).replace(/\r\n/g,'\n').split('\n');
+      // يقبل كل من CRLF و LF ويزيل BOM إن وجد
+      return String(text).replace(/^\uFEFF/, '').replace(/\r\n/g,'\n').split('\n');
     }
 
     function importCSV(file){
@@ -310,7 +311,7 @@
         data.forEach(it=> newRow(it));
         recalc();
       };
-      reader.readAsText(file);
+      reader.readAsText(file, 'utf-8');
     }
 
     function parseCsvLine(line){
@@ -437,11 +438,15 @@
       const crlf = 'a\r\nb\r\n';
       results.push(assert('splitLines يدعم CRLF', splitLines(crlf).filter(Boolean).length===2));
 
-      // 4) Summary contains \n separators
+      // 4) splitLines removes BOM
+      const withBom = String.fromCharCode(0xFEFF)+"a\nb";
+      results.push(assert('splitLines يزيل BOM', splitLines(withBom)[0]==='a'));
+
+      // 5) Summary contains \n separators
       const sum = buildSummary();
       results.push(assert('الملخص يحتوي على فواصل أسطر صحيحة', sum.includes('\n')));
 
-      // 5) Totals calculation sanity
+      // 6) Totals calculation sanity
       const total = sample.reduce((s,r)=> s + r.qty*r.unit, 0); // 211
       results.push(assert('حسابات إجمالي أساسية', Math.abs(total-211)<1e-6));
 
